@@ -1,25 +1,23 @@
 <template>
   <div id="app">
-    <router-view></router-view>
+    <codemirror-editor />
   </div>
 </template>
+
+<script setup>
+import CodemirrorEditor from '@/views/CodemirrorEditor.vue'
+</script>
 
 <style lang="less">
 // 仿 uniapp 外层全屏
 html,
 body,
 #app {
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
-  height: 100%;
-  width: 100%;
 }
-</style>
-
-<style lang="less">
-/* 每个页面公共css */
-@import url('./assets/less/style-mirror.css');
-@import url('./assets/less/theme.less');
 
 ::-webkit-scrollbar {
   width: 6px;

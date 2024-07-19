@@ -26,6 +26,13 @@
             ></i>
             暗黑模式
           </el-dropdown-item>
+          <el-dropdown-item divided @click.native="isEditOnLeftChanged">
+            <i
+              class="el-icon-check"
+              :style="{ opacity: isEditOnLeft ? 1 : 0 }"
+            ></i>
+            左侧编辑
+          </el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
       <el-dropdown>
@@ -103,6 +110,14 @@
               :charge="codeThemeChanged"
             ></style-option-menu>
           </el-dropdown-item>
+          <el-dropdown-item class="padding-left-3">
+            <style-option-menu
+              label="图注格式"
+              :options="config.legendOption"
+              :current="selectLegend"
+              :charge="legendChanged"
+            ></style-option-menu>
+          </el-dropdown-item>
           <el-dropdown-item
             divided
             class="padding-left-3"
@@ -170,6 +185,9 @@
 </template>
 
 <script>
+import { mapState, mapActions } from 'pinia'
+import { useStore } from '@/stores'
+
 import { setFontSize, setColorWithCustomTemplate } from '@/assets/scripts/util'
 import { solveWeChatImage, mergeCss } from '@/assets/scripts/converter'
 import DEFAULT_CSS_CONTENT from '@/assets/example/theme-css.txt'
@@ -177,7 +195,6 @@ import config from '@/assets/scripts/config'
 import ResetDialog from './ResetDialog'
 import StyleOptionMenu from './StyleOptionMenu'
 import PostInfoDialog from './PostInfoDialog'
-import { mapState, mapMutations } from 'vuex'
 
 export default {
   name: `editor-header`,
@@ -186,11 +203,13 @@ export default {
       config,
       citeStatus: false,
       isMacCodeBlock: true,
+      isEditOnLeft: true,
       showResetConfirm: false,
       selectFont: ``,
       selectSize: ``,
       selectColor: ``,
       selectCodeTheme: config.codeThemeOption[2].value,
+      selectLegend: ``,
       form: {
         dialogVisible: false,
         title: ``,
@@ -201,27 +220,27 @@ export default {
       formatItems: [
         {
           label: `加粗`,
-          kbd: `Ctrl + B`,
+          kbd: `Ctrl/Command + B`,
           emitArgs: [`addFormat`, `**`],
         },
         {
           label: `斜体`,
-          kbd: `Ctrl + I`,
+          kbd: `Ctrl/Command + I`,
           emitArgs: [`addFormat`, `*`],
         },
         {
           label: `删除线`,
-          kbd: `Alt + Shift + U`,
+          kbd: `Ctrl/Command + D`,
           emitArgs: [`addFormat`, `~~`],
         },
         {
           label: `超链接`,
-          kbd: `Alt + Shift + K`,
+          kbd: `Ctrl/Command + K`,
           emitArgs: [`addFormat`, `[`, `]()`],
         },
         {
           label: `格式化`,
-          kbd: `Alt + Shift + L`,
+          kbd: `Ctrl/Command + F`,
           emitArgs: [`formatContent`],
         },
       ],
@@ -236,7 +255,7 @@ export default {
     btnType() {
       return this.nightMode ? `default` : `primary`
     },
-    ...mapState({
+    ...mapState(useStore, {
       output: (state) => state.output,
       editor: (state) => state.editor,
       cssEditor: (state) => state.cssEditor,
@@ -244,9 +263,11 @@ export default {
       currentSize: (state) => state.currentSize,
       currentColor: (state) => state.currentColor,
       codeTheme: (state) => state.codeTheme,
+      legend: (state) => state.legend,
       nightMode: (state) => state.nightMode,
       currentCiteStatus: (state) => state.citeStatus,
       currentIsMacCodeBlock: (state) => state.isMacCodeBlock,
+      currentIsEditOnLeft: (state) => state.isEditOnLeft,
     }),
   },
   methods: {
@@ -321,6 +342,11 @@ export default {
       this.selectCodeTheme = theme
       this.$emit(`refresh`)
     },
+    legendChanged(legend) {
+      this.setCurrentLegend(legend)
+      this.selectLegend = legend
+      this.$emit(`refresh`)
+    },
     statusChanged() {
       this.citeStatus = !this.citeStatus
       this.setCiteStatus(this.citeStatus)
@@ -331,20 +357,46 @@ export default {
       this.setIsMacCodeBlock(this.isMacCodeBlock)
       this.$emit(`refresh`)
     },
+    isEditOnLeftChanged() {
+      this.isEditOnLeft = !this.isEditOnLeft
+      this.setIsEditOnLeft(this.isEditOnLeft)
+    },
     // 复制到微信公众号
     copy() {
       this.$emit(`startCopy`)
       setTimeout(() => {
+        function modifyHtmlStructure(htmlString) {
+          // 创建一个 div 元素来暂存原始 HTML 字符串
+          const tempDiv = document.createElement(`div`)
+          tempDiv.innerHTML = htmlString
+
+          const originalItems = tempDiv.querySelectorAll(`li > ul, li > ol`)
+
+          originalItems.forEach((originalItem) => {
+            originalItem.parentElement.insertAdjacentElement(
+              `afterend`,
+              originalItem
+            )
+          })
+
+          // 返回修改后的 HTML 字符串
+          return tempDiv.innerHTML
+        }
+
         solveWeChatImage()
 
         const clipboardDiv = document.getElementById(`output`)
         clipboardDiv.innerHTML = mergeCss(clipboardDiv.innerHTML)
-        if (this.isMacCodeBlock) {
-          clipboardDiv.innerHTML = clipboardDiv.innerHTML.replaceAll(
-            /(<code class="prettyprint.+?(?<=style="))/g,
-            `$1font-family: Menlo, 'Operator Mono', Consolas, Monaco, monospace;`
+        clipboardDiv.innerHTML = modifyHtmlStructure(clipboardDiv.innerHTML)
+
+        // 调整 katex 公式元素为行内标签，目的是兼容微信公众号渲染
+        clipboardDiv.innerHTML = clipboardDiv.innerHTML
+          .replace(
+            /class="base"( style="display: inline")*/g,
+            `class="base" style="display: inline"`
           )
-        }
+          // 公众号不支持 position， 转换为等价的 translateY
+          .replace(/top:(.*?)em/g, `transform: translateY($1em)`)
         clipboardDiv.focus()
         window.getSelection().removeAllRanges()
         let range = document.createRange()
@@ -395,6 +447,7 @@ export default {
       this.colorChanged(this.config.colorOption[0].value)
       this.sizeChanged(this.config.sizeOption[2].value)
       this.codeThemeChanged(this.config.codeThemeOption[2].value)
+      this.legendChanged(this.config.legendOption[3].value)
       this.$emit(`cssChanged`)
       this.selectFont = this.currentFont
       this.selectSize = this.currentSize
@@ -408,7 +461,7 @@ export default {
       this.showResetConfirm = false
       this.editor.focus()
     },
-    ...mapMutations([
+    ...mapActions(useStore, [
       `setCurrentColor`,
       `setCiteStatus`,
       `themeChanged`,
@@ -416,8 +469,10 @@ export default {
       `setCurrentSize`,
       `setCssEditorValue`,
       `setCurrentCodeTheme`,
+      `setCurrentLegend`,
       `setWxRendererOptions`,
       `setIsMacCodeBlock`,
+      `setIsEditOnLeft`,
     ]),
   },
   mounted() {
@@ -425,8 +480,10 @@ export default {
     this.selectSize = this.currentSize
     this.selectColor = this.currentColor
     this.selectCodeTheme = this.codeTheme
+    this.selectLegend = this.legend
     this.citeStatus = this.currentCiteStatus
     this.isMacCodeBlock = this.currentIsMacCodeBlock
+    this.isEditOnLeft = this.currentIsEditOnLeft
 
     const fileInput = this.$refs.fileInput
     fileInput.onchange = () => {

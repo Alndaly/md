@@ -3,12 +3,17 @@ export default {
     {
       label: `无衬线`,
       value: `-apple-system-font,BlinkMacSystemFont, Helvetica Neue, PingFang SC, Hiragino Sans GB , Microsoft YaHei UI , Microsoft YaHei ,Arial,sans-serif`,
-      desc: `Abc`,
+      desc: `字体123Abc`,
     },
     {
       label: `衬线`,
       value: `Optima-Regular, Optima, PingFangSC-light, PingFangTC-light, 'PingFang SC', Cambria, Cochin, Georgia, Times, 'Times New Roman', serif`,
-      desc: `Abc`,
+      desc: `字体123Abc`,
+    },
+    {
+      label: `等宽`,
+      value: `Menlo, Monaco, 'Courier New', monospace`,
+      desc: `字体123Abc`,
     },
   ],
   sizeOption: [
@@ -54,6 +59,7 @@ export default {
       value: `rgba(250, 81, 81, 1)`,
       desc: `热情活泼`,
     },
+    // { label: `微信绿`, value: `rgb(26, 173, 25,1)`, desc: `经典微信绿` },
   ],
   codeThemeOption: [
     {
@@ -80,6 +86,33 @@ export default {
       label: `vs2015`,
       value: `https://cdn-doocs.oss-cn-shenzhen.aliyuncs.com/npm/highlight.js@11.5.1/styles/vs2015.min.css`,
       desc: `dark`,
+    },
+  ],
+  legendOption: [
+    {
+      label: `title 优先`,
+      value: `title-alt`,
+      desc: ``,
+    },
+    {
+      label: `alt 优先`,
+      value: `alt-title`,
+      desc: ``,
+    },
+    {
+      label: `只显示 title`,
+      value: `title`,
+      desc: ``,
+    },
+    {
+      label: `只显示 alt`,
+      value: `alt`,
+      desc: ``,
+    },
+    {
+      label: `不显示`,
+      value: `none`,
+      desc: ``,
     },
   ],
   form: {

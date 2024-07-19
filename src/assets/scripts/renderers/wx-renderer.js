@@ -1,5 +1,11 @@
-import { Renderer } from "marked";
-import hljs from 'highlight.js';
+import marked, { Renderer } from "marked";
+import hljs from "highlight.js";
+import markedKatex from "marked-katex-extension";
+
+marked.use(markedKatex({
+  throwOnError: false,
+  output: `html`
+}));
 
 class WxRenderer {
   constructor(opts) {
@@ -23,7 +29,7 @@ class WxRenderer {
         }
       }
 
-      let base_block = merge(base,  {});
+      let base_block = merge(base, {});
       for (let ele in themeTpl.block) {
         if (themeTpl.block.hasOwnProperty(ele)) {
           let style = themeTpl.block[ele];
@@ -120,28 +126,36 @@ class WxRenderer {
         text = text.replace(/<p.*?>/g, `<p ${getStyles("blockquote_p")}>`);
         return `<blockquote ${getStyles("blockquote")}>${text}</blockquote>`;
       };
-      renderer.code = (text, lang) => {
-        lang = hljs.getLanguage(lang) ? lang : 'plaintext';
+      renderer.code = (text, lang = "") => {
+        if (lang.startsWith("mermaid")) {
+          setTimeout(() => {
+            window.mermaid?.run();
+          }, 0);
+          return `<center><pre class="mermaid">${text}</pre></center>`;
+        }
+        lang = lang.split(" ")[0];
+        lang = hljs.getLanguage(lang) ? lang : "plaintext";
+        text = hljs.highlight(text, { language: lang }).value;
+        text = text
+          .replace(/\r\n/g, "<br/>")
+          .replace(/\n/g, "<br/>")
+          .replace(/(>[^<]+)|(^[^<]+)/g, function (str) {
+            return str.replace(/\s/g, "&nbsp;");
+          });
 
-        text = hljs.highlight(text, {language: lang}).value;
-
-        text = text.replace(/\r\n/g,"<br/>")
-                   .replace(/\n/g,"<br/>")
-                   .replace(/(>[^<]+)|(^[^<]+)/g, function(str) {
-                     return str.replace(/\s/g, '&nbsp;')
-                   });
-
-        return `<pre class="hljs code__pre" ${getStyles("code_pre")}><code class="prettyprint language-${lang}" ${getStyles("code")}>${text}</code></pre>`
+        return `<pre class="hljs code__pre" ${getStyles(
+          "code_pre"
+        )}><code class="language-${lang}" ${getStyles(
+          "code"
+        )}>${text}</code></pre>`;
       };
       renderer.codespan = (text, lang) =>
         `<code ${getStyles("codespan")}>${text}</code>`;
       renderer.listitem = (text) =>
-        `<li ${getStyles(
-          "listitem"
-        )}><span><%s/></span>${text}</li>`;
+        `<li ${getStyles("listitem")}><span><%s/></span>${text}</li>`;
 
       renderer.list = (text, ordered, start) => {
-        text = text.replace(/<\/*p.*?>/g, "");
+        text = text.replace(/<\/*p .*?>/g, "").replace(/<\/*p>/g, "");
         let segments = text.split(`<%s/>`);
         if (!ordered) {
           text = segments.join("• ");
@@ -154,14 +168,31 @@ class WxRenderer {
         return `<ol ${getStyles("ol")}>${text}</ol>`;
       };
       renderer.image = (href, title, text) => {
-        let subText = "";
-        if (text) {
-          subText = `<figcaption ${getStyles(
-            "figcaption"
-          )}>${text}</figcaption>`;
-        }
-        let figureStyles = getStyles("figure");
-        let imgStyles = getStyles("image");
+        const createSubText = (s) => {
+          if (!s) {
+            return "";
+          }
+
+          return `<figcaption ${getStyles("figcaption")}>${s}</figcaption>`;
+        };
+        const transform = (title, alt) => {
+          const legend = localStorage.getItem("legend");
+          switch (legend) {
+            case "alt":
+              return alt;
+            case "title":
+              return title;
+            case "alt-title":
+              return alt || title;
+            case "title-alt":
+              return title || alt;
+            default:
+              return "";
+          }
+        };
+        const subText = createSubText(transform(title, text));
+        const figureStyles = getStyles("figure");
+        const imgStyles = getStyles("image");
         return `<figure ${figureStyles}><img ${imgStyles} src="${href}" title="${title}" alt="${text}"/>${subText}</figure>`;
       };
       renderer.link = (href, title, text) => {

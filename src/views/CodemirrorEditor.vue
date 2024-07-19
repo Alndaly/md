@@ -1,11 +1,5 @@
 <template>
-  <div
-    class="container"
-    :class="{ container_night: nightMode }"
-    @keydown.alt.shift.k="addFormat('[', ']()')"
-    @keydown.alt.shift.u="addFormat('~~')"
-    @keydown.ctrl.alt.l="formatContent()"
-  >
+  <div class="container" :class="{ container_night: nightMode }">
     <el-container>
       <el-header class="editor__header">
         <editor-header
@@ -28,6 +22,7 @@
       <el-main class="main-body">
         <el-row class="main-section">
           <el-col
+            :style="{ order: store.isEditOnLeft ? 0 : 1 }"
             :span="12"
             class="codeMirror-wrapper"
             ref="codeMirrorWrapper"
@@ -94,7 +89,11 @@
     <run-loading></run-loading>
   </div>
 </template>
+
 <script>
+import { mapState, mapActions } from 'pinia'
+import { useStore } from '@/stores'
+
 import EditorHeader from '@/components/CodemirrorEditor/EditorHeader/index'
 import AboutDialog from '@/components/CodemirrorEditor/AboutDialog'
 import InsertFormDialog from '@/components/CodemirrorEditor/InsertFormDialog'
@@ -115,7 +114,6 @@ import {
   toBase64,
 } from '@/assets/scripts/util'
 import fileApi from '../api/file'
-import { mapState, mapMutations } from 'vuex'
 
 require(`codemirror/mode/javascript/javascript`)
 
@@ -147,7 +145,7 @@ export default {
     UploadImgDialog,
   },
   computed: {
-    ...mapState({
+    ...mapState(useStore, {
       wxRenderer: (state) => state.wxRenderer,
       output: (state) => state.output,
       editor: (state) => state.editor,
@@ -442,7 +440,6 @@ export default {
     onEditorRefresh() {
       this.codeThemeChanged(this.codeTheme)
       this.editorRefresh()
-      setTimeout(() => window.PR.prettyPrint(), 0)
     },
     // 复制结束
     endCopy() {
@@ -598,7 +595,7 @@ export default {
           break
       }
     },
-    ...mapMutations([
+    ...mapActions(useStore, [
       `initEditorState`,
       `initEditorEntity`,
       `setWxRendererOptions`,
@@ -609,19 +606,27 @@ export default {
   mounted() {
     setTimeout(() => {
       this.leftAndRightScroll()
-      window.PR.prettyPrint()
     }, 300)
+  },
+  setup() {
+    const store = useStore()
+
+    return {
+      store,
+    }
   },
 }
 </script>
 
 <style lang="less" scoped>
-.editor__header {
-  padding: 0;
-}
+@import url('../assets/less/app.less');
 </style>
 
 <style lang="less" scoped>
+.editor__header {
+  padding: 0;
+}
+
 .main-body {
   padding-top: 12px;
   overflow: hidden;
@@ -695,8 +700,4 @@ export default {
 .codeMirror-wrapper {
   overflow-x: auto;
 }
-</style>
-
-<style lang="less" scoped>
-@import url('../assets/less/app.less');
 </style>
